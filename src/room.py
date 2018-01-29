@@ -1,0 +1,152 @@
+# coding: utf-8
+import time
+from collections import defaultdict
+from tornado.ioloop import PeriodicCallback
+
+
+class Question(object):
+    def __init__(self, content):
+        self.content = content
+        self.options = {}
+        self.answer_key = None
+        self.time_limit = 1
+        self.answer_detail = defaultdict(int)
+
+    def add_option(self, key, val, is_answer=False):
+        self.options[key] = val
+        if is_answer:
+            self.answer_key = key
+
+    def increment_answer(self, key):
+        self.answer_detail[key] += 1
+
+    def answer_summary(self):
+        return {
+            'answer': self.answer_key,
+            'detail': {k: v for k, v in self.answer_detail.iteritems()}
+        }
+
+    def dump(self):
+        return {
+            'content': self.content,
+            'options': [{'val': val, 'idx': key} for key, val in self.options.iteritems()],
+            'answerTime': self.time_limit
+        }
+
+
+st_WaitStart = 0
+st_StartCountDown = 1
+st_AnswerQuestion = 2
+st_WaitingShowAnswer = 3
+st_ShowAnswer = 4
+st_ShowReward = 5
+st_Closed = 6
+
+
+class Room(object):
+    def __init__(self, enter_code, man_code, close_callback):
+        self.enter_code = enter_code
+        self.man_code = man_code
+        self.owner = None
+
+        self.created_time = time.time()
+        self.questions = []
+        self.reward = 0  # 成功奖励
+        self.status = 0  # 记录房间状态: 等待开始(0)/开始倒计时(1)/出题收集答案(2)/等待揭示结果(3)/答案结果展示(4)/奖金展示(5)/结束(6)
+        # self.status_conf = [1, 10, 10, 20, 10, 120, 10]  # 状态值
+        self.status_conf = [1, 1, 1, 1, 1, 1, 10]  # 状态值
+        self.question_idx = -1  # 当前问题序号
+        self._snapshot = {}  # 当前快照信息
+        self.counter = 0
+
+        self.user_count = 0  # 当前房间人数
+        self.failed_users = set()  # 失败人数
+        self.passed_users = set()  # 通过人数
+        self.user_answers = defaultdict(list)
+
+        self.close_handler = close_callback
+        self.event_handler = None
+        self.timer = PeriodicCallback(self.ticker, 1000)
+
+    @property
+    def current_question(self):
+        return self.questions[self.question_idx]
+
+    def add_question(self, q):
+        self.questions.append(q)
+
+    def add_answer(self, user_id, question_idx, answer):
+        if self.status != st_AnswerQuestion \
+                or question_idx != self.question_idx \
+                or (self.question_idx > 0 and user_id not in self.passed_users):
+            return False
+        self.user_answers[user_id].append(answer)
+        cur_question = self.current_question
+        cur_question.increment_answer(answer)
+        if cur_question.answer_key != answer:
+            self.passed_users.remove(user_id)
+            self.failed_users.add(user_id)
+        else:
+            self.passed_users.add(user_id)
+        return True
+
+    def status_trans(self):
+        self.status += 1
+        if self.status == st_ShowReward and self.question_idx < len(self.questions) - 1:
+            self.status = st_AnswerQuestion
+
+        data = {'st': self.status, 'duration': self.status_conf[self.status]}
+
+        if self.status == st_AnswerQuestion:
+            self.question_idx += 1
+            q = self.current_question
+            self.status_conf[self.status] = q.time_limit  # 修改答题时间
+            data['data'] = q.dump()
+        elif self.status == st_ShowAnswer:
+            q = self.current_question
+            data['data'] = q.answer_summary()
+        elif self.status == st_ShowReward:
+            data['data'] = {'reward': self.reward, 'passed': len(self.passed_users)}
+        self.event_handler(data)
+
+        if self.status == st_Closed:
+            # 调用结束通知
+            self.timer.stop()
+            self.close_handler(self)
+
+    def ticker(self):
+        self.counter += 1
+        if self.counter > self.status_conf[self.status]:
+            self.counter = 1
+            self.status_trans()
+
+    def start(self, callback):
+        '''
+        :param callback: 事件发生时的回调，function callback(room_id, message, target)
+        :return:
+        '''
+        if not self.event_handler:
+            self.event_handler = callback
+            self.timer.start()
+            return True
+        return False
+
+    def snapshot(self):
+        return self._snapshot
+
+
+def test():
+    r = Room(2222, 666666, lambda: tornado.ioloop.IOLoop.current().stop())
+    for i in range(4):
+        q = Question('问题 %s' % i)
+        for j in range(3):
+            q.add_option(j, '选项' + str(j), j == 2)
+        r.add_question(q)
+    import tornado.ioloop
+    import sys
+    r.start(lambda ipt: sys.stdout.write(str(ipt) + '\n'))
+    tornado.ioloop.IOLoop.current().start()
+
+
+if __name__ == '__main__':
+    test()
