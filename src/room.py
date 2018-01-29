@@ -1,5 +1,6 @@
 # coding: utf-8
 import time
+import copy
 from collections import defaultdict
 from tornado.ioloop import PeriodicCallback
 
@@ -53,10 +54,10 @@ class Room(object):
         self.questions = []
         self.reward = 0  # 成功奖励
         self.status = 0  # 记录房间状态: 等待开始(0)/开始倒计时(1)/出题收集答案(2)/等待揭示结果(3)/答案结果展示(4)/奖金展示(5)/结束(6)
-        # self.status_conf = [1, 10, 10, 20, 10, 120, 10]  # 状态值
-        self.status_conf = [1, 1, 1, 1, 1, 1, 10]  # 状态值
+        self.status_conf = [1, 10, 10, 20, 10, 120, 10]  # 状态值
+        # self.status_conf = [1, 1, 1, 1, 1, 1, 10]  # 状态值(测试用)
         self.question_idx = -1  # 当前问题序号
-        self._snapshot = {}  # 当前快照信息
+        self._snapshot = {'st': 0, 'duration': 0}  # 当前快照信息
         self.counter = 0
 
         self.user_count = 0  # 当前房间人数
@@ -102,12 +103,20 @@ class Room(object):
             q = self.current_question
             self.status_conf[self.status] = q.time_limit  # 修改答题时间
             data['data'] = q.dump()
+            self._snapshot = copy.copy(data)  # {"data": "question detail"}
         elif self.status == st_ShowAnswer:
             q = self.current_question
             data['data'] = q.answer_summary()
+            self._snapshot['st'] = data['st']
+            self._snapshot['duration'] = data['duration']
+            self._snapshot['result'] = data['data']  # {"data": "question detail", "result": "answer detail"}
         elif self.status == st_ShowReward:
             data['data'] = {'reward': self.reward, 'passed': len(self.passed_users)}
-        self.event_handler(data)
+            self._snapshot = copy.copy(data)
+        else:
+            self._snapshot['st'] = data['st']
+            self._snapshot['duration'] = data['duration']
+        self.event_handler(self.enter_code, data, None)
 
         if self.status == st_Closed:
             # 调用结束通知
@@ -119,6 +128,8 @@ class Room(object):
         if self.counter > self.status_conf[self.status]:
             self.counter = 1
             self.status_trans()
+        self._snapshot['counter'] = self.counter
+        print 'snapshot:', self._snapshot
 
     def start(self, callback):
         '''
@@ -132,11 +143,12 @@ class Room(object):
         return False
 
     def snapshot(self):
+        '''当前状态, 当前进度, 题目快照'''
         return self._snapshot
 
 
 def test():
-    r = Room(2222, 666666, lambda: tornado.ioloop.IOLoop.current().stop())
+    r = Room(2222, 666666, lambda _: tornado.ioloop.IOLoop.current().stop())
     for i in range(4):
         q = Question('问题 %s' % i)
         for j in range(3):
@@ -144,7 +156,7 @@ def test():
         r.add_question(q)
     import tornado.ioloop
     import sys
-    r.start(lambda ipt: sys.stdout.write(str(ipt) + '\n'))
+    r.start(lambda rid, ipt, tar: sys.stdout.write(str(ipt) + '\n'))
     tornado.ioloop.IOLoop.current().start()
 
 
