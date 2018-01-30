@@ -55,7 +55,8 @@ class Controller(object):
     def room_snapshot(self, user_id, room_id):
         room = self.rooms.get(room_id, None)
         if room:
-            return room.snapshot
+            return room.snapshot(user_id)
+        return None
 
     def on_room_message(self, room_id, message, target=None):
         if not target:
