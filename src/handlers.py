@@ -3,6 +3,7 @@
 import json
 import logging
 import tornado.gen
+from controller import biz
 from tornado.web import RequestHandler, asynchronous
 from tornado.websocket import WebSocketHandler
 from tornado.httpclient import AsyncHTTPClient
@@ -32,12 +33,48 @@ class GetUserOpenidHandler(RequestHandler):
         self.write('{"code": 0, "openid": %s}' % data if data else '{"code": 500, "msg": "get failed."}')
 
 
+class CreateRoomHandler(RequestHandler):
+    def get(self):
+        user_id = self.get_argument('u')
+        data = self.get_argument('q')
+        room_id, reason = biz.gen_room(user_id, data)
+        if not room_id:
+            self.write('{"code": 1, "msg": "%s"}' % reason)
+        else:
+            self.write('{"code": 0, "data": %s}' % room_id)
+
+
 class WsHandler(WebSocketHandler):
     def check_origin(self, origin):
         return True
 
+    def force_close(self):
+        self.close()
+
     def on_close(self):
-        pass
+        biz.remove(self.current_user, self.room_id)
 
     def open(self):
-        pass
+        self.current_user = self.get_argument('u')
+        self.room_id = self.get_argument('r')
+        if biz.register(self.current_user, self.room_id, self.write_message):
+            snp = biz.room_snapshot(self.current_user, self.room_id)
+            self.write_message(json.dumps({'code': 0, 'data': snp}))
+        else:
+            self.close(4100, 'room not exist.')
+
+    def on_message(self, message):
+        msg_obj = json.loads(message)
+        if msg_obj['t'] == 1:
+            # 答题
+            pass
+        elif msg_obj['t'] == 2:
+            # 开启房间
+            success, reason = biz.start_room(self.current_user, self.room_id)
+            self.write_message('{"code": 0}' if success else ('{"code": 1, "msg": "%s"}' % reason))
+        elif msg_obj['t'] == 3:
+            # 重启房间
+            pass
+        elif msg_obj['t'] == 4:
+            # 群体复活
+            pass

@@ -1,4 +1,6 @@
 # coding: utf-8
+
+import json
 import time
 import copy
 from collections import defaultdict
@@ -155,6 +157,25 @@ class Room(object):
         ret = copy.copy(self._snapshot)
         return ret.update(answer_detail)
 
+    def __repr__(self):
+        data = {
+            'reward': self.reward,
+            'result': {
+                'passed': list(self.passed_users),
+                'failed': list(self.failed_users)
+            },
+            'detail': [
+                {
+                    'question': item.dump(),
+                    'answer': item.answer_summary()
+                }
+                for item in self.questions
+                ],
+            'id': self.enter_code,
+            'owner': self.owner
+        }
+        return json.dumps(data, ensure_ascii=False, indent=2)
+
 
 def test():
     r = Room(2222, 666666, lambda _: tornado.ioloop.IOLoop.current().stop())
@@ -163,6 +184,7 @@ def test():
         for j in range(3):
             q.add_option(j, '选项' + str(j), j == 2)
         r.add_question(q)
+    print r
     import tornado.ioloop
     import sys
     r.start(lambda rid, ipt, tar: sys.stdout.write(str(ipt) + '\n'))

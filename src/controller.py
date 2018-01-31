@@ -1,5 +1,6 @@
 # coding: utf-8
 
+import datetime
 import random
 from collections import defaultdict
 from room import Question, Room
@@ -43,8 +44,8 @@ class Controller(object):
                 room.reward = data['reward']
                 room.owner = user_id
                 self.rooms[enter_code] = room
-                return True, None
-        return False, 'too many rooms in server'
+                return enter_code, None
+        return None, 'too many rooms in server'
 
     def start_room(self, user_id, enter_code):
         room = self.rooms.get(enter_code, None)
@@ -63,10 +64,19 @@ class Controller(object):
             self.broadcast(room_id, message)
 
     def on_room_close(self, room):
-        self.rooms.pop(room.enter_code)
+        room_conns = self.conns.pop(room.enter_code, {})
+        for msg_handler in room_conns.itervalues():
+            # 广播通知客户端房间结束, 断开连接
+            msg_handler('{"code": 1}')
+        dead_room = self.rooms.pop(room.enter_code)
+        with open(datetime.datetime.now().strftime('%Y%m%d.%H%M%S.txt'), 'w') as f:
+            f.write(str(dead_room))
 
     def register(self, user_id, room_id, write_handler):
-        self.conns[room_id][user_id] = write_handler
+        if room_id in self.rooms:
+            self.conns[room_id][user_id] = write_handler
+            return True
+        return False
 
     def remove(self, user_id, room_id):
         self.conns[room_id].pop(user_id, None)
@@ -76,6 +86,9 @@ class Controller(object):
         if room_conns:
             for msg_handler in room_conns.itervalues():
                 msg_handler(message)
+
+
+biz = Controller()
 
 
 def test():
