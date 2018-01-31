@@ -3,6 +3,7 @@
 import json
 import logging
 import tornado.gen
+import message
 from controller import biz
 from tornado.web import RequestHandler, asynchronous
 from tornado.websocket import WebSocketHandler
@@ -30,7 +31,7 @@ class GetUserOpenidHandler(RequestHandler):
                     logging.warning('get user openid failed with code: %s, response: %s', code, response.body)
         except:
             logging.warning('get user openid failed with code: %s', code)
-        self.write('{"code": 0, "openid": %s}' % data if data else '{"code": 500, "msg": "get failed."}')
+        self.write(message.success_response(data) if data else message.failed_response('get openid failed'))
 
 
 class CreateRoomHandler(RequestHandler):
@@ -38,10 +39,10 @@ class CreateRoomHandler(RequestHandler):
         user_id = self.get_argument('u')
         data = self.get_argument('q')
         room_id, reason = biz.gen_room(user_id, data)
-        if not room_id:
-            self.write('{"code": 1, "msg": "%s"}' % reason)
+        if room_id:
+            self.write(message.success_response(room_id))
         else:
-            self.write('{"code": 0, "data": %s}' % room_id)
+            self.write(message.failed_response(reason))
 
 
 class WsHandler(WebSocketHandler):
@@ -59,19 +60,19 @@ class WsHandler(WebSocketHandler):
         self.room_id = self.get_argument('r')
         if biz.register(self.current_user, self.room_id, self.write_message):
             snp = biz.room_snapshot(self.current_user, self.room_id)
-            self.write_message(json.dumps({'code': 0, 'data': snp}))
+            self.write_message(message.snapshot_message(snp))
         else:
             self.close(4100, 'room not exist.')
 
-    def on_message(self, message):
-        msg_obj = json.loads(message)
+    def on_message(self, msg):
+        msg_obj = json.loads(msg)
         if msg_obj['t'] == 1:
             # 答题
             pass
         elif msg_obj['t'] == 2:
             # 开启房间
             success, reason = biz.start_room(self.current_user, self.room_id)
-            self.write_message('{"code": 0}' if success else ('{"code": 1, "msg": "%s"}' % reason))
+            self.write_message(message.success_response() if success else message.failed_response(reason))
         elif msg_obj['t'] == 3:
             # 重启房间
             pass

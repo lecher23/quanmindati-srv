@@ -3,6 +3,7 @@
 import json
 import time
 import copy
+import message
 from collections import defaultdict
 from tornado.ioloop import PeriodicCallback
 
@@ -12,7 +13,7 @@ class Question(object):
         self.content = content
         self.options = {}
         self.answer_key = None
-        self.time_limit = 1
+        self.time_limit = 10
         self.answer_detail = defaultdict(int)
 
     def add_option(self, key, val, is_answer=False):
@@ -118,7 +119,7 @@ class Room(object):
         else:
             self._snapshot['st'] = data['st']
             self._snapshot['duration'] = data['duration']
-        self.event_handler(self.enter_code, data, None)
+        self.event_handler(self.enter_code, message.status_trans_message(data), None)
 
         if self.status == st_Closed:
             # 调用结束通知
@@ -131,7 +132,7 @@ class Room(object):
             self.counter = 1
             self.status_trans()
         self._snapshot['counter'] = self.counter
-        print 'snapshot:', self._snapshot
+        # print 'snapshot:', self._snapshot
 
     def start(self, callback):
         '''

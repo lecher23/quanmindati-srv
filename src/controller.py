@@ -2,6 +2,7 @@
 
 import datetime
 import random
+import message
 from collections import defaultdict
 from room import Question, Room
 
@@ -59,15 +60,15 @@ class Controller(object):
             return room.snapshot(user_id)
         return None
 
-    def on_room_message(self, room_id, message, target=None):
+    def on_room_message(self, room_id, msg, target=None):
         if not target:
-            self.broadcast(room_id, message)
+            self.broadcast(room_id, msg)
 
     def on_room_close(self, room):
         room_conns = self.conns.pop(room.enter_code, {})
         for msg_handler in room_conns.itervalues():
             # 广播通知客户端房间结束, 断开连接
-            msg_handler('{"code": 1}')
+            msg_handler(message.closed_message())
         dead_room = self.rooms.pop(room.enter_code)
         with open(datetime.datetime.now().strftime('%Y%m%d.%H%M%S.txt'), 'w') as f:
             f.write(str(dead_room))
@@ -81,11 +82,11 @@ class Controller(object):
     def remove(self, user_id, room_id):
         self.conns[room_id].pop(user_id, None)
 
-    def broadcast(self, room_id, message):
+    def broadcast(self, room_id, msg):
         room_conns = self.conns.get(room_id, None)
         if room_conns:
             for msg_handler in room_conns.itervalues():
-                msg_handler(message)
+                msg_handler(msg)
 
 
 biz = Controller()
