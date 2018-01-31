@@ -4,6 +4,7 @@ import datetime
 import random
 import message
 from collections import defaultdict
+from tornado.ioloop import IOLoop
 from room import Question, Room
 
 
@@ -33,7 +34,7 @@ class Controller(object):
 
         '''
         for _ in range(0, 10):
-            enter_code = random.randint(100000, 999999)
+            enter_code = str(random.randint(100000, 999999))
             if enter_code not in self.rooms:
                 manager_code = random.randint(1000, 9999)
                 room = Room(enter_code, manager_code, self.on_room_close)
@@ -66,16 +67,21 @@ class Controller(object):
 
     def on_room_close(self, room):
         room_conns = self.conns.pop(room.enter_code, {})
-        for msg_handler in room_conns.itervalues():
+        il = IOLoop.current()
+        for conn in room_conns.itervalues():
             # 广播通知客户端房间结束, 断开连接
-            msg_handler(message.closed_message())
+            try:
+                conn.write_message(message.closed_message())
+                il.call_later(1, conn.close)
+            except:
+                pass
         dead_room = self.rooms.pop(room.enter_code)
         with open(datetime.datetime.now().strftime('%Y%m%d.%H%M%S.txt'), 'w') as f:
             f.write(str(dead_room))
 
-    def register(self, user_id, room_id, write_handler):
+    def register(self, user_id, room_id, conn):
         if room_id in self.rooms:
-            self.conns[room_id][user_id] = write_handler
+            self.conns[room_id][user_id] = conn
             return True
         return False
 
@@ -85,8 +91,8 @@ class Controller(object):
     def broadcast(self, room_id, msg):
         room_conns = self.conns.get(room_id, None)
         if room_conns:
-            for msg_handler in room_conns.itervalues():
-                msg_handler(msg)
+            for conn in room_conns.itervalues():
+                conn.write_message(msg)
 
 
 biz = Controller()

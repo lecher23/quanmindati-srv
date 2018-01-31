@@ -149,12 +149,12 @@ class Room(object):
         '''当前状态, 当前进度, 题目快照'''
         answer_list = self.user_answers.get(user_id, [])
         answer_detail = {'enable': False, 'history': None}
-        if len(answer_list) == self.question_idx + 1:
-            # 已答题
-            answer_detail['history'] = answer_list[self.question_idx]
-        elif user_id in self.passed_users or not self.question_idx:
+        if user_id in self.passed_users or self.question_idx < 0:
             # 未答题，可以答题
             answer_detail['enable'] = True
+        elif len(answer_list) == self.question_idx + 1:
+            # 已答题
+            answer_detail['history'] = answer_list[self.question_idx]
         ret = copy.copy(self._snapshot)
         return ret.update(answer_detail)
 

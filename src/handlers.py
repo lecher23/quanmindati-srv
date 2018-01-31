@@ -46,6 +46,9 @@ class CreateRoomHandler(RequestHandler):
 
 
 class WsHandler(WebSocketHandler):
+    def initialize(self):
+        self.room_id = None
+
     def check_origin(self, origin):
         return True
 
@@ -53,7 +56,8 @@ class WsHandler(WebSocketHandler):
         self.close()
 
     def on_close(self):
-        biz.remove(self.current_user, self.room_id)
+        if self.room_id:
+            biz.remove(self.current_user, self.room_id)
 
     def open(self):
         self.current_user = self.get_argument('u')

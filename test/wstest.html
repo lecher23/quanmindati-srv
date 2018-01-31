@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+<h1>
+    Websocket测试
+</h1>
+<!--<input type="text" id="ws_tag" value="wss" style="width:27px">://-->
+<!--<input type="text" id="ip" value="tes.yongaishop.com" style="width:120px">-->
+<!--<br>-->
+<!--<span>主播端端口：</span>-->
+<!--<input type="text" id="port" value="9443" style="width:40px"><br>-->
+<!--<br>-->
+<!--<span>观众端端口：</span>-->
+<!--<input type="text" id="wport" value="9443" style="width:40px"><br>-->
+
+<input type="text" id="ws_tag" value="ws" style="width:27px">://
+<input type="text" id="ip" value="127.0.0.1" style="width:120px">
+<br>
+<span>端口：</span>
+<input type="text" id="port" value="8999" style="width:40px"><br>
+<br>
+<span>房间号:</span>
+<input type="number" maxlength="6" minlength="6" id="roomId" value="000000" style="width:140px"><br>
+<hr/>
+<table>
+    <tr>
+        <td><span>主播端:</span></td>
+        <td>
+            <button onclick="start_host()">开启房间</button>
+            <button onclick="stop_host()">断开连接</button>
+            <button onclick="start_game()">开启游戏</button>
+            <button onclick="stop_game()">关闭游戏</button>
+            <button onclick="stop_room()">主动关闭房间</button>
+            <br/>
+        </td>
+    </tr>
+    <tr>
+        <td><span>自定义消息</span></td>
+        <td><input value='{"t": 101}' id="ipt1">
+            &nbsp;&nbsp;&nbsp;&nbsp;
+            <button onclick="send_msg()">发送</button>
+        </td>
+    </tr>
+    <tr><td><hr/></td><td><hr/></td></tr>
+</table>
+
+<h2>服务器输出:</h2>
+<hr/>
+<div id="div1" style="width:40%;float:left;border:solid 1px">111</div>
+<div style="width:5%;float:left;">&nbsp;&nbsp;&nbsp;&nbsp;</div>
+<div id="div3" style="width:40%;float:left;border:solid 1px">222</div>
+<script>
+    var host = "wss://tes.yongaishop.com:9443";
+    //host = "ws://127.0.0.1:6499"
+    host_path = "/qqq/ws";
+    watcher_path = "/sock/watch/fm";
+    var ws = 1;
+    var wws = 2;
+
+    function get_value(id_name){
+        ele = document.getElementById(id_name);
+        return ele.value;
+    }
+
+    function set_div(name, content, append) {
+        var doc = document.getElementById(name);
+        if (append == true) {
+            lines = doc.innerHTML.split("<br>")
+            item_count = lines.length;
+            max_line = 15;
+            if (item_count > max_line){
+                new_ary = lines.slice(item_count - max_line);
+                new_ary.push(content);
+                doc.innerHTML = new_ary.join('<br>')
+            }else{
+                doc.innerHTML = doc.innerHTML + '<br>' + content;
+            }
+        }else {
+            doc.innerHTML = content;
+        }
+    }
+
+    function stop_host(){
+        ws.close();
+    }
+
+    function stop_room(){
+        ws.send('{"t":7}');
+    }
+
+    function start_host(){
+        set_div("div1", "", false)
+        url = get_value("ws_tag") + "://" + get_value("ip") + ":" + get_value("port") + host_path;
+        ws = new WebSocket(url + "?u=666&r=" + get_value("roomId"));
+        ws.onopen = function() {
+        };
+        ws.onmessage = function (evt) {
+            set_div("div1", evt.data, true)
+        };
+        ws.onclose = function (event) {
+            set_div("div1", "连接断开" + event.code + "," + event.reason, true)
+        }
+    }
+
+    function start_game(){
+        ws.send('{"t":6, "gt":2}');
+    }
+
+    function send_msg() {
+        ws.send(get_value("ipt1"));
+    }
+
+    function stop_game(){
+        ws.send('{"t":5}');
+    }
+
+    function watcher_bet(){
+        bet_slot = Math.ceil(Math.random() * 10) % 3
+        wws.send('{"t": 1, "bet": {"S": '+bet_slot+', "N": 10}, "n": 1}');
+    }
+    function send_msg2() {
+        wws.send(get_value("ipt2"));
+    }
+
+
+    function stop_watcher(){
+        wws.close();
+    }
+
+    function start_watcher(){
+        set_div("div3", "", false)
+        url = get_value("ws_tag") + "://" + get_value("ip") + ":" + get_value("wport") + watcher_path;
+        wws = new WebSocket(url +  "?uid=777&lid=666");
+        wws.onopen = function() {
+        };
+        wws.onmessage = function (evt) {
+            set_div("div3", evt.data, true)
+        };
+        wws.onclose = function (event) {
+            set_div("div3", "连接断开" + event.code + "," + event.reason, true)
+        }
+    }
+
+
+
+
+</script>
+</body>
+</html>
