@@ -55,8 +55,8 @@ def main():
     options.parse_command_line()
 
     app = Application(handlers=[
-        (r'/qqq/create', handlers.CreateRoomHandler),
-        (r'/qqq/user', handlers.GetUserOpenidHandler),
+        (r'/qqq/api/create', handlers.CreateRoomHandler),
+        (r'/qqq/api/user', handlers.GetUserOpenidHandler),
         (r'/qqq/ws', handlers.WsHandler)
     ])
     app.listen(options.port, xheaders=True)
