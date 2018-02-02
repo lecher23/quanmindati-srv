@@ -73,7 +73,7 @@ class Controller(object):
         room = self.rooms.get(room_id, None)
         if not room:
             return False, 'room not exist'
-        return room.add_answer(user_id, data['q'], data['a']), 'answer not allowed'
+        return room.add_answer(user_id, data['q'], data['a'])
 
     def room_snapshot(self, user_id, room_id):
         room = self.rooms.get(room_id, None)

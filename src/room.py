@@ -60,7 +60,7 @@ class Room(object):
         self.questions = []
         self.reward = 0  # 成功奖励
         self.status = 0  # 记录房间状态: 等待开始(0)/开始倒计时(1)/出题收集答案(2)/等待揭示结果(3)/答案结果展示(4)/奖金展示(5)/结束(6)
-        self.status_conf = [1, 10, 10, 20, 10, 120, 10]  # 状态值
+        self.status_conf = [1, 2, 20, 10, 10, 120, 10]  # 状态值
         # self.status_conf = [1, 1, 1, 1, 1, 1, 10]  # 状态值(测试用)
         self.question_idx = -1  # 当前问题序号
         self._snapshot = {'st': 0, 'duration': 0}  # 当前快照信息
@@ -107,7 +107,10 @@ class Room(object):
         if self.status != st_AnswerQuestion \
                 or question_idx != self.question_idx \
                 or (self.question_idx > 0 and user_id not in self.passed_users):
-            return False
+            return False, 'not allowed'
+        user_ans_his = self.user_answers[user_id]
+        if len(user_ans_his) == self.question_idx + 1:
+            return False, 'answered'
         self.user_answers[user_id].append(answer)
         cur_question = self.current_question
         cur_question.increment_answer(answer)
@@ -116,7 +119,7 @@ class Room(object):
             self.failed_users.add(user_id)
         else:
             self.passed_users.add(user_id)
-        return True
+        return True, ''
 
     def status_trans(self):
         self.status += 1

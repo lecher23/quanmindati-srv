@@ -32,6 +32,7 @@
         <td>
             <button onclick="start_host()">主播连接</button>
             <button onclick="start_room()">开启答题</button>
+            <button onclick="reset_room()">开启答题</button>
             <br/>
         </td>
     </tr>
@@ -105,6 +106,11 @@
     function start_room() {
         ws.send('{"t": 2}');
     }
+
+    function reset_room() {
+        ws.send('{"t": 3}');
+    }
+
 
     function start_game(){
         ws.send('{"t":6, "gt":2}');
