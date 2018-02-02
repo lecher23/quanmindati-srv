@@ -183,7 +183,9 @@ class Room(object):
             # 已答题
             answer_detail['history'] = answer_list[self.question_idx]
         ret = copy.copy(self._snapshot)
-        return ret.update(answer_detail)
+        ret.update(answer_detail)
+        ret["owner"] = self.owner
+        return ret
 
     def __repr__(self):
         data = {

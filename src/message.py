@@ -20,8 +20,8 @@ def reset_room_message():
 
 
 def success_response(data=None):
-    return json.dumps({"code": 0, "data": data}, ensure_ascii=False) if data else '{"code": 0}'
+    return json.dumps({"code": 200, "data": data}, ensure_ascii=False) if data else '{"code": 200}'
 
 
 def failed_response(reason):
-    return '{"code": 1, "msg": "%s"}' % reason
+    return '{"code": 500, "msg": "%s"}' % reason

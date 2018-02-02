@@ -34,9 +34,11 @@ class GetUserOpenidHandler(RequestHandler):
 
 
 class CreateRoomHandler(RequestHandler):
-    def get(self):
-        user_id = self.get_argument('u')
-        data = self.get_argument('q')
+    def post(self):
+        logging.info(self.request.body)
+        obj = json.loads(self.request.body)
+        user_id = obj['u']
+        data = obj['d']
         room_id, reason = biz.gen_room(user_id, data)
         if room_id:
             self.write(message.success_response(room_id))
@@ -65,6 +67,7 @@ class WsHandler(WebSocketHandler):
             snp = biz.room_snapshot(self.current_user, self.room_id)
             self.write_message(message.snapshot_message(snp))
         else:
+            logging.info('room %s not exist.', self.room_id)
             self.close(4100, 'room not exist.')
 
     def on_message(self, msg):
