@@ -16,6 +16,9 @@ class Question(object):
         self.time_limit = 10
         self.answer_detail = defaultdict(int)
 
+    def reset(self):
+        self.answer_detail = defaultdict(int)
+
     def add_option(self, key, val, is_answer=False):
         self.options[key] = val
         if is_answer:
@@ -71,6 +74,27 @@ class Room(object):
         self.close_handler = close_callback
         self.event_handler = None
         self.timer = PeriodicCallback(self.ticker, 1000)
+
+    def revival_all(self):
+        for u in self.failed_users:
+            self.passed_users.add(u)
+        return True
+
+    def reset(self):
+        for q in self.questions:
+            q.reset()
+
+        self.status = 0
+        self.question_idx = -1  # 当前问题序号
+        self._snapshot = {'st': 0, 'duration': 0}  # 当前快照信息
+        self.counter = 0
+
+        self.failed_users = set()  # 失败人数
+        self.passed_users = set()  # 通过人数
+        self.user_answers = defaultdict(list)
+
+        self.timer.stop()
+        return True
 
     @property
     def current_question(self):

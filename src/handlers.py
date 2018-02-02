@@ -62,7 +62,7 @@ class WsHandler(WebSocketHandler):
     def open(self):
         self.current_user = self.get_argument('u')
         self.room_id = self.get_argument('r')
-        if biz.register(self.current_user, self.room_id, self.write_message):
+        if biz.register(self.current_user, self.room_id, self):
             snp = biz.room_snapshot(self.current_user, self.room_id)
             self.write_message(message.snapshot_message(snp))
         else:
@@ -70,16 +70,20 @@ class WsHandler(WebSocketHandler):
 
     def on_message(self, msg):
         msg_obj = json.loads(msg)
+        success, reason = False, 'invalid message'
         if msg_obj['t'] == 1:
             # 答题
-            pass
+            logging.info('user %s answer room %s question', self.current_user, self.room_id)
+            success, reason = biz.answer_question(self.current_user, self.room_id, msg_obj['d'])
         elif msg_obj['t'] == 2:
             # 开启房间
+            logging.info('user %s start room %s', self.current_user, self.room_id)
             success, reason = biz.start_room(self.current_user, self.room_id)
-            self.write_message(message.success_response() if success else message.failed_response(reason))
         elif msg_obj['t'] == 3:
             # 重启房间
-            pass
+            logging.info('user %s restart room %s', self.current_user, self.room_id)
+            success, reason = biz.reset_room(self.current_user, self.room_id)
         elif msg_obj['t'] == 4:
             # 群体复活
             pass
+        self.write_message(message.success_response() if success else message.failed_response(reason))

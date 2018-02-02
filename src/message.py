@@ -15,6 +15,10 @@ def snapshot_message(snapshot):
     return json.dumps({'code': 3, 'data': snapshot}, ensure_ascii=False)
 
 
+def reset_room_message():
+    return '{"code": 4}'
+
+
 def success_response(data=None):
     return json.dumps({"code": 0, "data": data}, ensure_ascii=False) if data else '{"code": 0}'
 

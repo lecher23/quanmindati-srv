@@ -55,6 +55,26 @@ class Controller(object):
             return room.start(self.on_room_message), 'room already started'
         return False, 'no private to start room'
 
+    def reset_room(self, user_id, room_id):
+        room = self.rooms.get(room_id, None)
+        if not room:
+            return False, 'room not exist'
+        if room.owner != user_id:
+            return False, 'no private'
+        return room.reset(), 'reset failed'
+
+    def answer_question(self, user_id, room_id, data):
+        '''
+        :param user_id:
+        :param room_id:
+        :param data: {"q": 1, "a": 2}
+        :return:
+        '''
+        room = self.rooms.get(room_id, None)
+        if not room:
+            return False, 'room not exist'
+        return room.add_answer(user_id, data['q'], data['a']), 'answer not allowed'
+
     def room_snapshot(self, user_id, room_id):
         room = self.rooms.get(room_id, None)
         if room:
