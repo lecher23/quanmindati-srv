@@ -9,8 +9,6 @@ from tornado.web import RequestHandler, asynchronous
 from tornado.websocket import WebSocketHandler
 from tornado.httpclient import AsyncHTTPClient
 
-appid = ''
-secret = ''
 wx_url = 'https://api.weixin.qq.com/sns/jscode2session'
 
 
@@ -19,7 +17,8 @@ class GetUserOpenidHandler(RequestHandler):
     @tornado.gen.coroutine
     def get(self):
         code = self.get_argument('code')
-        url = '{}?appid={}&secret={}&js_code={}&grant_type=authorization_code'.format(wx_url, appid, secret, code)
+        url = '{}?appid={}&secret={}&js_code={}&grant_type=authorization_code'.format(
+            wx_url, self.settings['appid'], self.settings['secret'], code)
         data = None
         try:
             response = yield AsyncHTTPClient().fetch(url)

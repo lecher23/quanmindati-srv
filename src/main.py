@@ -38,6 +38,8 @@ def main():
     from tornado.options import define, options
 
     define("port", 8999, help="Server listen port", type=int)
+    define("app", '', help="wx app key", type=str)
+    define("secret", '', help="wx app secret", type=str)
 
     default_params = {
         '--log-to-stderr': 'true',
@@ -58,7 +60,7 @@ def main():
         (r'/qqq/api/create', handlers.CreateRoomHandler),
         (r'/qqq/api/user', handlers.GetUserOpenidHandler),
         (r'/qqq/ws', handlers.WsHandler)
-    ])
+    ], appid=options.app, secret=options.secret)
     app.listen(options.port, xheaders=True)
     logging.info('Listen to port: %s', options.port)
 
