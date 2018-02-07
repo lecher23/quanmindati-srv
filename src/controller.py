@@ -14,6 +14,7 @@ class Controller(object):
     def __init__(self):
         self.rooms = {}
         self.conns = defaultdict(dict)
+        self.max_users = 50
 
     def gen_room(self, user_id, data):
         '''
@@ -101,9 +102,12 @@ class Controller(object):
 
     def register(self, user_id, room_id, conn):
         if room_id in self.rooms:
-            self.conns[room_id][user_id] = conn
-            return True
-        return False
+            room_conns = self.conns[room_id]
+            room_conns[user_id] = conn
+            if len(room_conns) > self.max_users:
+                return False, 'too many user in this room!'
+            return True, None
+        return False, 'room not exist!'
 
     def remove(self, user_id, room_id):
         self.conns[room_id].pop(user_id, None)

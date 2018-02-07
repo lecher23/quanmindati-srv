@@ -74,12 +74,13 @@ class WsHandler(WebSocketHandler):
     def open(self):
         self.current_user = self.get_argument('u')
         self.room_id = self.get_argument('r')
-        if biz.register(self.current_user, self.room_id, self):
+        success, reason = biz.register(self.current_user, self.room_id, self)
+        if success:
             snp = biz.room_snapshot(self.current_user, self.room_id)
             self.write_message(message.snapshot_message(snp))
         else:
             logging.info('room %s not exist.', self.room_id)
-            self.close(4100, 'room not exist.')
+            self.close(4100, reason)
 
     def on_message(self, msg):
         msg_obj = json.loads(msg)
