@@ -8,10 +8,9 @@ from tornado.ioloop import IOLoop
 
 import handlers
 
-
 def test():
     from controller import biz
-    print biz.gen_room('666', {
+    print biz.gen_room('oqBAK0bG0dVdWCQfc8G812Q1cM-w', {
         "question": [
             {
                 "content": "问题1",
@@ -34,7 +33,7 @@ def test():
 
 
 def main():
-    test()
+    # test()
     from tornado.options import define, options
 
     define("port", 8999, help="Server listen port", type=int)
@@ -59,6 +58,7 @@ def main():
     app = Application(handlers=[
         (r'/qqq/api/create', handlers.CreateRoomHandler),
         (r'/qqq/api/user', handlers.GetUserOpenidHandler),
+        (r'/qqq/api/register', handlers.RegisterUserHandler),
         (r'/qqq/ws', handlers.WsHandler)
     ], appid=options.app, secret=options.secret)
     app.listen(options.port, xheaders=True)

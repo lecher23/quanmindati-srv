@@ -5,11 +5,22 @@ import logging
 import tornado.gen
 import message
 from controller import biz
+from data import sys_users
 from tornado.web import RequestHandler, asynchronous
 from tornado.websocket import WebSocketHandler
 from tornado.httpclient import AsyncHTTPClient
 
 wx_url = 'https://api.weixin.qq.com/sns/jscode2session'
+
+
+class RegisterUserHandler(RequestHandler):
+    def post(self):
+        data = json.loads(self.request.body)
+        user_id = data['id']
+        user_name = data['name']
+        user_avatar = data['avatar']
+        sys_users.register(user_id, user_name, user_avatar)
+        self.write(message.success_response())
 
 
 class GetUserOpenidHandler(RequestHandler):

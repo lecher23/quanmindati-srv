@@ -4,6 +4,8 @@ import json
 import time
 import copy
 import message
+import logging
+from data import sys_users
 from collections import defaultdict
 from tornado.ioloop import PeriodicCallback
 
@@ -60,7 +62,7 @@ class Room(object):
         self.questions = []
         self.reward = 0  # 成功奖励
         self.status = 0  # 记录房间状态: 等待开始(0)/开始倒计时(1)/出题收集答案(2)/等待揭示结果(3)/答案结果展示(4)/奖金展示(5)/结束(6)
-        self.status_conf = [1, 2, 20, 10, 10, 120, 10]  # 状态值
+        self.status_conf = [1, 5, 10, 20, 10, 120, 5]  # 状态值
         # self.status_conf = [1, 1, 1, 1, 1, 1, 10]  # 状态值(测试用)
         self.question_idx = -1  # 当前问题序号
         self._snapshot = {'st': 0, 'duration': 0}  # 当前快照信息
@@ -92,6 +94,7 @@ class Room(object):
         self.failed_users = set()  # 失败人数
         self.passed_users = set()  # 通过人数
         self.user_answers = defaultdict(list)
+        self.event_handler = None
 
         self.timer.stop()
         return True
@@ -115,7 +118,7 @@ class Room(object):
         cur_question = self.current_question
         cur_question.increment_answer(answer)
         if cur_question.answer_key != answer:
-            self.passed_users.remove(user_id)
+            self.passed_users.discard(user_id)
             self.failed_users.add(user_id)
         else:
             self.passed_users.add(user_id)
@@ -133,6 +136,7 @@ class Room(object):
             q = self.current_question
             self.status_conf[self.status] = q.time_limit  # 修改答题时间
             data['data'] = q.dump()
+            data['data']['index'] = self.question_idx
             self._snapshot = copy.copy(data)  # {"data": "question detail"}
         elif self.status == st_ShowAnswer:
             q = self.current_question
@@ -141,7 +145,11 @@ class Room(object):
             self._snapshot['duration'] = data['duration']
             self._snapshot['result'] = data['data']  # {"data": "question detail", "result": "answer detail"}
         elif self.status == st_ShowReward:
-            data['data'] = {'reward': self.reward, 'passed': len(self.passed_users)}
+            data['data'] = {
+                'reward': self.reward,
+                'passed': [sys_users.query(uid) for uid in self.passed_users],
+                'each': ("%.2f" % (float(self.reward) / len(self.passed_users))) if self.passed_users else ('%.2f' % float(self.reward))
+            }
             self._snapshot = copy.copy(data)
         else:
             self._snapshot['st'] = data['st']
@@ -150,8 +158,9 @@ class Room(object):
 
         if self.status == st_Closed:
             # 调用结束通知
-            self.timer.stop()
-            self.close_handler(self)
+            # self.timer.stop()
+            # self.close_handler(self)
+            self.reset()
 
     def ticker(self):
         self.counter += 1
@@ -174,12 +183,12 @@ class Room(object):
 
     def snapshot(self, user_id):
         '''当前状态, 当前进度, 题目快照'''
-        answer_list = self.user_answers.get(user_id, [])
+        answer_list = self.user_answers[user_id]
         answer_detail = {'enable': False, 'history': None}
-        if user_id in self.passed_users or self.question_idx < 0:
+        if user_id in self.passed_users or (self.question_idx <= 0 and not answer_list):
             # 未答题，可以答题
             answer_detail['enable'] = True
-        elif len(answer_list) == self.question_idx + 1:
+        if answer_list and len(answer_list) == self.question_idx + 1:
             # 已答题
             answer_detail['history'] = answer_list[self.question_idx]
         ret = copy.copy(self._snapshot)
